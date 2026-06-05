@@ -1,19 +1,9 @@
 # conector.py
 """
-Capa de acceso a datos sobre PostgreSQL/Supabase (SQLAlchemy).
+Capa de acceso a datos sobre PostgreSQL/Supabase.
 
-Modelo real en la base:  nodo -> sensor -> lectura.
-
-Para NO reescribir tu interfaz, este facade expone la API "vieja" que tu
-app ya usa (consultar_tarjetas, consultar_sensores_por_tarjeta, etc.),
-pero por debajo lee de las tablas nuevas:
-
-    Tarjeta  ->  nodo   (id_fisico = mac)
-    Sensor   ->  renglón de tablero por métrica (Temperatura / Humedad),
-                 con el último valor de la última lectura.
-
-Más abajo está también la API "nueva" (consultar_nodos, consultar_lecturas)
-y la ingesta desde hardware.
+Modelo: nodo (receptor, agrupa) -> sensor (unidad monitoreada) -> lectura.
+El dashboard muestra UNA tarjeta por SENSOR; el nodo es la agrupación.
 """
 
 from types import SimpleNamespace
@@ -27,86 +17,93 @@ from concrete.db import (
 )
 
 
-# =====================================================================
-#  API VIEJA  — la que consume tu UI actual (no toques los widgets)
-# =====================================================================
-
 def _renglon(tipo, dato, unidades, sensor_id, campo):
-    """
-    Objeto ligero que tus widgets leen como un 'sensor'.
-    Lleva tipo/dato/unidades (para la tarjeta del dashboard) y además
-    sensor_id + campo ('temp'/'hum') para que el historial sepa qué
-    serie pedir de cada lectura.
-    """
     return SimpleNamespace(tipo=tipo, dato=dato, unidades=unidades,
                            sensor_id=sensor_id, campo=campo)
 
 
-def consultar_tarjetas():
-    """Cada nodo se presenta como una 'tarjeta' del dashboard."""
+# =====================================================================
+#  API que consume tu UI
+# =====================================================================
+
+def consultar_tarjetas(nodo_id=None):
+    """
+    Cada SENSOR es una tarjeta. El nodo va como etiqueta de agrupación.
+    Si nodo_id se da, sólo devuelve los sensores de ese nodo (filtro).
+    """
     with session_scope() as s:
-        nodos = NodoRepository(s).listar()
+        filas = SensorRepository(s).listar_con_nodo(nodo_id)
+        tarjetas = []
+        for sensor, nodo in filas:
+            etiqueta_nodo = nodo.nombre or nodo.mac
+            nombre = sensor.alias or sensor.nombre
+            tarjetas.append(Tarjeta(
+                tarjeta_id=sensor.sensor_id,
+                id_fisico=nodo.mac,
+                nombre=nombre,
+                grupo_id=nodo.nodo_id,
+                tags=[etiqueta_nodo],
+            ))
+        return tarjetas
+
+
+def consultar_sensores_por_tarjeta(sensor_id):
+    """Renglones Temperatura/Humedad con el último valor de ese sensor."""
+    with session_scope() as s:
+        ultima = LecturaRepository(s).ultima(sensor_id)
+        temp = ultima.temp if ultima else None
+        hum = ultima.hum if ultima else None
         return [
-            Tarjeta(
-                tarjeta_id=n.nodo_id,
-                id_fisico=n.mac,
-                nombre=(n.nombre or n.mac),
-                grupo_id=None,
-                tags=[],
-            )
-            for n in nodos
+            _renglon('Temperatura', temp, '°C', sensor_id, 'temp'),
+            _renglon('Humedad', hum, '%', sensor_id, 'hum'),
         ]
 
 
-def consultar_sensores_por_tarjeta(tarjeta_id):
-    """
-    tarjeta_id es en realidad el nodo_id. Por cada sensor del nodo devuelve
-    DOS renglones (Temperatura y Humedad) con el último valor leído, que es
-    justo lo que tu tarjeta dibuja.
-    """
+# =====================================================================
+#  Gestión / etiquetado / eliminación (diálogo)
+# =====================================================================
+
+def consultar_sensores():
+    """Detalle de cada sensor + su nodo, para el diálogo."""
     with session_scope() as s:
-        sensores = SensorRepository(s).listar_por_nodo(tarjeta_id)
-        lr = LecturaRepository(s)
-        renglones = []
-        for sensor in sensores:
-            ultima = lr.ultima(sensor.sensor_id)
-            temp = ultima.temp if ultima else None
-            hum = ultima.hum if ultima else None
-            renglones.append(_renglon('Temperatura', temp, '°C', sensor.sensor_id, 'temp'))
-            renglones.append(_renglon('Humedad', hum, '%', sensor.sensor_id, 'hum'))
-        return renglones
+        filas = SensorRepository(s).listar_con_nodo()
+        return [
+            SimpleNamespace(
+                sensor_id=sensor.sensor_id,
+                nombre=sensor.nombre,
+                alias=sensor.alias,
+                nodo_id=nodo.nodo_id,
+                nodo_nombre=nodo.nombre,
+                mac=nodo.mac,
+            )
+            for sensor, nodo in filas
+        ]
 
 
-def consultar_grupos():
-    """El modelo nuevo no tiene grupos; se conserva para no romper imports."""
-    return []
-
-
-def agregar_tarjeta(tarjeta, tipo_sensores=None):
-    """
-    Registro manual de dispositivo: crea el nodo (la MAC va en id_fisico)
-    y un sensor. (Normalmente el hardware los crea solo vía la función RPC.)
-    """
+def renombrar_sensor(sensor_id, alias):
     with session_scope() as s:
-        nodo = NodoRepository(s).obtener_o_crear(
-            mac=tarjeta.id_fisico, nombre=tarjeta.nombre
-        )
-        SensorRepository(s).obtener_o_crear(
-            nodo_id=nodo.nodo_id, nombre=(tarjeta.nombre or 'Sensor_01')
-        )
-        tarjeta.tarjeta_id = nodo.nodo_id
-    return tarjeta
+        SensorRepository(s).actualizar_alias(sensor_id, alias)
 
 
-def agregar_sensor(sensor):
-    """Crea un sensor. `sensor` debe traer .nodo_id y .nombre."""
+def renombrar_nodo(nodo_id, nombre):
     with session_scope() as s:
-        nuevo = SensorRepository(s).crear(nombre=sensor.nombre, nodo_id=sensor.nodo_id)
-        return nuevo.sensor_id
+        NodoRepository(s).actualizar_nombre(nodo_id, nombre)
+
+
+def eliminar_sensor(sensor_id):
+    """Borra un sensor y todas sus lecturas (cascada)."""
+    with session_scope() as s:
+        SensorRepository(s).eliminar(sensor_id)
+
+
+def eliminar_nodo(nodo_id):
+    """Borra un nodo con todos sus sensores y lecturas (cascada)."""
+    with session_scope() as s:
+        NodoRepository(s).eliminar(nodo_id)
 
 
 # =====================================================================
-#  API NUEVA  — modelo nodo/sensor/lectura (para el historial y el hardware)
+#  API nueva / hardware
 # =====================================================================
 
 def _nodo_to_serializer(n):
@@ -131,7 +128,6 @@ def consultar_nodos():
 
 
 def consultar_lecturas(sensor_id, fecha_inicial, fecha_final):
-    """Para las gráficas de historial: devuelve lecturas (temp+hum) por rango."""
     with session_scope() as s:
         filas = LecturaRepository(s).graficar(sensor_id, fecha_inicial, fecha_final)
         return [_lectura_to_serializer(l) for l in filas]

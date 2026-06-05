@@ -1,12 +1,9 @@
 # concrete/db/repositories.py
-"""
-Patrón Repositorio. Una clase por entidad; todas operan sobre una Session.
-No conocen el proveedor (eso vive en engine.py).
-"""
+"""Patrón Repositorio. Una clase por entidad; operan sobre una Session."""
 
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 
 from .models import Nodo, Sensor, Lectura
@@ -31,6 +28,16 @@ class NodoRepository:
     def obtener_o_crear(self, *, mac: str, nombre: str | None = None) -> Nodo:
         return self.obtener_por_mac(mac) or self.crear(mac=mac, nombre=nombre)
 
+    def actualizar_nombre(self, nodo_id: int, nombre: str | None) -> Nodo | None:
+        nodo = self.session.get(Nodo, nodo_id)
+        if nodo is not None:
+            nodo.nombre = nombre
+        return nodo
+
+    def eliminar(self, nodo_id: int) -> None:
+        # ON DELETE CASCADE en la BD borra sus sensores y lecturas.
+        self.session.execute(delete(Nodo).where(Nodo.nodo_id == nodo_id))
+
 
 class SensorRepository:
     def __init__(self, session: Session):
@@ -40,6 +47,14 @@ class SensorRepository:
         return list(self.session.scalars(
             select(Sensor).where(Sensor.nodo_id == nodo_id).order_by(Sensor.sensor_id)
         ))
+
+    def listar_con_nodo(self, nodo_id: int | None = None) -> list[tuple[Sensor, Nodo]]:
+        """Sensores junto con su nodo. Si nodo_id se da, filtra por ese nodo."""
+        stmt = select(Sensor, Nodo).join(Nodo, Sensor.nodo_id == Nodo.nodo_id)
+        if nodo_id is not None:
+            stmt = stmt.where(Nodo.nodo_id == nodo_id)
+        stmt = stmt.order_by(Nodo.nodo_id, Sensor.sensor_id)
+        return list(self.session.execute(stmt).all())
 
     def buscar(self, *, nodo_id: int, nombre: str) -> Sensor | None:
         return self.session.scalar(
@@ -56,17 +71,23 @@ class SensorRepository:
         return self.buscar(nodo_id=nodo_id, nombre=nombre) or \
             self.crear(nombre=nombre, nodo_id=nodo_id)
 
+    def actualizar_alias(self, sensor_id: int, alias: str | None) -> Sensor | None:
+        sensor = self.session.get(Sensor, sensor_id)
+        if sensor is not None:
+            sensor.alias = alias or None
+        return sensor
+
+    def eliminar(self, sensor_id: int) -> None:
+        # ON DELETE CASCADE borra sus lecturas.
+        self.session.execute(delete(Sensor).where(Sensor.sensor_id == sensor_id))
+
 
 class LecturaRepository:
-    """Acceso a la serie de tiempo. Sólo necesita sensor_id."""
-
     def __init__(self, session: Session):
         self.session = session
 
-    def graficar(self, sensor_id: int,
-                 fecha_inicial: datetime,
+    def graficar(self, sensor_id: int, fecha_inicial: datetime,
                  fecha_final: datetime) -> list[Lectura]:
-        """Consulta de las gráficas: usa el índice (sensor_id, fecha DESC)."""
         stmt = (
             select(Lectura)
             .where(
@@ -78,26 +99,20 @@ class LecturaRepository:
         return list(self.session.scalars(stmt))
 
     def ultima(self, sensor_id: int) -> Lectura | None:
-        """Última lectura del sensor (para el valor actual de las tarjetas)."""
         return self.session.scalar(
-            select(Lectura)
-            .where(Lectura.sensor_id == sensor_id)
-            .order_by(Lectura.fecha.desc())
-            .limit(1)
+            select(Lectura).where(Lectura.sensor_id == sensor_id)
+            .order_by(Lectura.fecha.desc()).limit(1)
         )
 
     def crear(self, *, sensor_id: int, fecha: datetime,
               temp: float | None = None, hum: float | None = None,
               numero_lectura: int | None = None, manual: bool = False) -> Lectura:
-        lectura = Lectura(
-            sensor_id=sensor_id, fecha=fecha, temp=temp, hum=hum,
-            numero_lectura=numero_lectura, manual=manual,
-        )
+        lectura = Lectura(sensor_id=sensor_id, fecha=fecha, temp=temp, hum=hum,
+                          numero_lectura=numero_lectura, manual=manual)
         self.session.add(lectura)
         self.session.flush()
         return lectura
 
     def crear_lote(self, lecturas: list[dict]) -> int:
-        """Inserción masiva (fase crítica, cada 10 min)."""
         self.session.bulk_insert_mappings(Lectura, lecturas)
         return len(lecturas)

@@ -1,8 +1,7 @@
+# concrete/db/models.py
 """
-Modelos ORM (SQLAlchemy 2.0) que reflejan schema.sql.
-
-Jerarquía:  Nodo 1───* Sensor 1───* Lectura
-La tabla Lectura es la serie de tiempo que alimenta las gráficas.
+Modelos ORM (SQLAlchemy 2.0).  Jerarquía: Nodo 1───* Sensor 1───* Lectura
+El nodo agrupa sensores (es el receptor). El sensor es la unidad monitoreada.
 """
 
 from datetime import datetime
@@ -30,7 +29,8 @@ class Sensor(Base):
     __tablename__ = "sensor"
 
     sensor_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)        # nombre de hardware
+    alias: Mapped[str | None] = mapped_column(Text)                  # nombre amigable (display)
     nodo_id: Mapped[int] = mapped_column(
         ForeignKey("nodo.nodo_id", ondelete="CASCADE"), nullable=False
     )

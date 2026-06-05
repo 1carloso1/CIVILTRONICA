@@ -45,8 +45,11 @@ class DataWidget(QWidget, Ui_data):
 
         for sensor in self.sensores:
             series[sensor.tipo] = []
-            fecha_inicial = self.fecha_inicial.dateTime().toPython()
-            fecha_final = self.fecha_final.dateTime().toPython()
+            # .astimezone() adjunta tu zona horaria local a la fecha del
+            # selector, para que la comparación contra los datos en UTC sea
+            # correcta (si no, habría un desfase de horas y saldría vacío).
+            fecha_inicial = self.fecha_inicial.dateTime().toPython().astimezone()
+            fecha_final = self.fecha_final.dateTime().toPython().astimezone()
             # Modelo nuevo: una lectura trae temp y hum juntas.
             # sensor.campo indica cuál de las dos usa este renglón.
             lecturas = conector.consultar_lecturas(
