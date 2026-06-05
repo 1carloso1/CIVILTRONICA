@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>main</class>
+ <widget class="QMainWindow" name="main">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>795</width>
+    <height>459</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>LIAI Concreto</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow{
+	background-color: #1d3c51;
+}
+
+QWidget#scroll_area_contents{
+	background-color: #152e3e;
+}
+
+/*QAbstractButton{
+	background-color: #fdfdfd;
+	border: 1px solid #d0d0d0;
+	border-radius: 2px;
+}
+
+QAbstractButton:hover{
+	background-color: #e0eef9;
+	border: 1px solid #0078d4;
+}
+
+QAbstractButton:pressed{
+	background-color: #cce4f7;
+	border: 1px solid #005499;
+}*/
+
+QScrollArea{
+	background-color: #152e3e;;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QWidget" name="toolbar" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QToolButton" name="btn_grafico">
+           <property name="styleSheet">
+            <string notr="true">QToolButton {
+    background-color: #1f2a36;
+    border-radius: 8px;
+    padding: 6px;
+}
+
+QToolButton:hover {
+    background-color: #33475b;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>1</string>
+           </property>
+           <property name="icon">
+            <iconset resource="resources.qrc">
+             <normaloff>:/main/icons/graphic_mode.png</normaloff>:/main/icons/graphic_mode.png</iconset>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>30</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="le_filtrar">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <family>Inter</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: white;
+color: black;</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="pixmap">
+         <pixmap resource="resources.qrc">:/main/images/liai_logo.png</pixmap>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QScrollArea" name="scroll_area">
+      <property name="font">
+       <font>
+        <family>Ink Free</family>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">border-radius: 10px;
+</string>
+      </property>
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="scroll_area_contents">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>773</width>
+         <height>327</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>795</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuAgregar">
+    <property name="title">
+     <string>Agregar...</string>
+    </property>
+    <addaction name="accion_dispositivo"/>
+    <addaction name="accion_grupo"/>
+   </widget>
+   <addaction name="menuAgregar"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="accion_dispositivo">
+   <property name="text">
+    <string>Dispositivo</string>
+   </property>
+  </action>
+  <action name="accion_grupo">
+   <property name="text">
+    <string>Grupo</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

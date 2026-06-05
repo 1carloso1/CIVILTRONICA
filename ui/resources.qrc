@@ -1,0 +1,16 @@
+<RCC>
+  <qresource prefix="board">
+    <file>images/board.jpg</file>
+    <file>images/board_small.png</file>
+    <file>images/board.png</file>
+  </qresource>
+  <qresource prefix="sensor">
+    <file>icons/humidity.png</file>
+    <file>icons/temperature.png</file>
+  </qresource>
+  <qresource prefix="main">
+    <file>images/liai_logo.png</file>
+    <file>icons/graphic_mode.png</file>
+    <file>icons/table_mode.png</file>
+  </qresource>
+</RCC>

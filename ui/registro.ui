@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>registro</class>
+ <widget class="QWidget" name="registro">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>389</width>
+    <height>328</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Registro de dispositivo</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget#registro{
+	background-color: #1f1f23;
+}
+
+QWidget{
+	font-family: &quot;Inter&quot;, &quot;Verdana&quot;, &quot;sans-serif&quot;;
+	font-size: 10pt;
+}
+
+QLabel{
+	color: #F0F0F0;
+	font-weight: bold;
+}
+
+QCheckBox{
+	color: #F0F0F0;
+}
+
+QCheckBox::indicator {
+	color: black;
+}
+
+QTextBrowser{
+	background-color: #1f1f23;
+	color: #f1c40f;
+}
+
+QPushButton{
+	color: black;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="verticalSpacing">
+      <number>11</number>
+     </property>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="le_nombre"/>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="le_id"/>
+     </item>
+     <item row="2" column="1">
+      <widget class="QComboBox" name="cb_grupo"/>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="le_etiquetas"/>
+     </item>
+     <item row="4" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="spacing">
+        <number>14</number>
+       </property>
+       <item>
+        <widget class="QCheckBox" name="chkb_temperatura">
+         <property name="text">
+          <string>Temperatura</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="chkb_humedad">
+         <property name="text">
+          <string>Humedad</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <property name="spacing">
+        <number>14</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="icon_nombre">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_nombre">
+         <property name="text">
+          <string>Nombre</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="1" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <property name="spacing">
+        <number>14</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="icon_id">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_id">
+         <property name="text">
+          <string>ID</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="2" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <property name="spacing">
+        <number>14</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="icon_grupo">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_grupo">
+         <property name="text">
+          <string>Grupo</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="3" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_6">
+       <property name="spacing">
+        <number>14</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="icon_tags">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_etiquetas">
+         <property name="text">
+          <string>Etiquetas</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="4" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_7">
+       <property name="spacing">
+        <number>14</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="icon_sensores">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lbl_sensores">
+         <property name="text">
+          <string>Sensores</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTextBrowser" name="tb_errores">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="html">
+      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Inter','Verdana','sans-serif'; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="btn_registrar">
+     <property name="text">
+      <string>Registrar</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
