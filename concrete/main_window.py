@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QMainWindow, QGridLayout, QVBoxLayout, QSpacerItem, QSizePolicy,
     QWidget, QComboBox,
@@ -11,41 +12,55 @@ from concrete.sensor_widget import SensorWidget
 from ui.ui_main import Ui_main
 
 
+ANCHO_VENTANA = 820       # ancho fijo de la ventana
+ALTO_VENTANA = 640        # alto fijo (pensado para ver ~4 tarjetas: 2 filas)
+COLUMNAS = 2              # tarjetas por fila -> 2 columnas x 2 filas = 4 a la vista
+
+
 class MainWindow(QMainWindow, Ui_main):
 
     def __init__(self, parent=None):
         super().__init__(parent)
         super().setupUi(self)
-        self.show()
         self.widget_boards = QWidget()
         self.widget_mini_boards = QWidget()
         self._ajustar_menu()
+        self._configurar_ventana()
         self._crear_filtro()
-        self.populate_dashboard()
-        self.populate_with_mini()
         self.set_main_layout()
         self.__signals__()
+        self.show()
+        self._cargar_filtro()
+        self.populate_dashboard()
+        self.populate_with_mini()
 
     def __signals__(self):
         self.btn_grafico.toggled.connect(self.swap_layout)
         self.accion_dispositivo.triggered.connect(self.register_new)
         self.le_filtrar.textChanged.connect(self._aplicar_filtro)
 
-    # ----- Limpieza del menú (en código; no se toca ui_main.py) -----
+    # ----- Tamaño fijo + scroll vertical -----
+    def _configurar_ventana(self):
+        # Tamaño fijo: ya no se puede estirar con el mouse ni crece con el contenido.
+        self.setFixedSize(ANCHO_VENTANA, ALTO_VENTANA)
+        # El contenido que no cabe se navega con scroll vertical (sin scroll horizontal).
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+    # ----- Limpieza del menú -----
     def _ajustar_menu(self):
         self.menuAgregar.setTitle("Sensores")
         self.accion_dispositivo.setText("Administrar sensores")
-        self.menuAgregar.removeAction(self.accion_grupo)   # "Grupo" ya no aplica
+        self.menuAgregar.removeAction(self.accion_grupo)
         self.le_filtrar.setPlaceholderText("Buscar por nombre…")
 
-    # ----- Filtro por nodo (desplegable) dentro de la toolbar existente -----
+    # ----- Filtro por nodo -----
     def _crear_filtro(self):
         self.cb_filtro = QComboBox()
         self.cb_filtro.setMinimumSize(0, 30)
         self.cb_filtro.setStyleSheet("background-color: white; color: black;")
-        # Se inserta entre el botón de gráfico (0) y el buscador de texto.
         self.horizontalLayout.insertWidget(1, self.cb_filtro)
-        self._cargar_filtro()
         self.cb_filtro.currentIndexChanged.connect(self._aplicar_filtro)
 
     def _cargar_filtro(self):
@@ -97,11 +112,12 @@ class MainWindow(QMainWindow, Ui_main):
             self.widget_boards.setLayout(layout)
         self.clear_layout(layout)
         tarjetas = self._tarjetas_filtradas()
-        columns = 3
         for i, tarjeta in enumerate(tarjetas):
-            row = i // columns
-            col = i % columns
+            row = i // COLUMNAS
+            col = i % COLUMNAS
             layout.addWidget(BoardWidget(tarjeta), row, col)
+        # Empuja las tarjetas hacia arriba para que el scroll se vea natural.
+        layout.setRowStretch(layout.rowCount(), 1)
 
     @staticmethod
     def clear_layout(layout):

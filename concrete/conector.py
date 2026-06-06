@@ -23,7 +23,7 @@ def _renglon(tipo, dato, unidades, sensor_id, campo):
 
 
 # =====================================================================
-#  API que consume tu UI
+#  API que consume la UI
 # =====================================================================
 
 def consultar_tarjetas(nodo_id=None):
@@ -131,6 +131,18 @@ def consultar_lecturas(sensor_id, fecha_inicial, fecha_final):
     with session_scope() as s:
         filas = LecturaRepository(s).graficar(sensor_id, fecha_inicial, fecha_final)
         return [_lectura_to_serializer(l) for l in filas]
+
+
+def rango_fechas_sensor(sensor_id):
+    """(fecha_min, fecha_max) de las lecturas del sensor, o (None, None)."""
+    with session_scope() as s:
+        return LecturaRepository(s).rango_fechas(sensor_id)
+
+
+def consultar_lecturas_sensor(sensor_id):
+    """Todas las lecturas de un sensor (para cargar el historial de una sola vez)."""
+    with session_scope() as s:
+        return [_lectura_to_serializer(l) for l in LecturaRepository(s).todas(sensor_id)]
 
 
 def registrar_lectura_desde_hardware(mac, nombre_sensor, fecha,

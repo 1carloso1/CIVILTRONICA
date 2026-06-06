@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.orm import Session
 
 from .models import Nodo, Sensor, Lectura
@@ -103,6 +103,21 @@ class LecturaRepository:
             select(Lectura).where(Lectura.sensor_id == sensor_id)
             .order_by(Lectura.fecha.desc()).limit(1)
         )
+
+    def todas(self, sensor_id: int) -> list[Lectura]:
+        """Todas las lecturas del sensor (orden ascendente)."""
+        return list(self.session.scalars(
+            select(Lectura).where(Lectura.sensor_id == sensor_id)
+            .order_by(Lectura.fecha)
+        ))
+
+    def rango_fechas(self, sensor_id: int):
+        """(fecha_min, fecha_max) de las lecturas del sensor, o (None, None)."""
+        fila = self.session.execute(
+            select(func.min(Lectura.fecha), func.max(Lectura.fecha))
+            .where(Lectura.sensor_id == sensor_id)
+        ).one()
+        return fila[0], fila[1]
 
     def crear(self, *, sensor_id: int, fecha: datetime,
               temp: float | None = None, hum: float | None = None,

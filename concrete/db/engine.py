@@ -26,8 +26,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if not DATABASE_URL:
     raise RuntimeError(
-        "Falta la variable de entorno DATABASE_URL. "
-        "Ejemplo: postgresql+psycopg2://user:pass@host:5432/postgres?sslmode=require"
+        "Falta la variable de entorno DATABASE_URL."
     )
 
 # create_engine mantiene un pool interno de SQLAlchemy (reemplaza a

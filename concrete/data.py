@@ -1,7 +1,11 @@
+from datetime import timedelta
+
 from PySide6 import QtWidgets
+from PySide6.QtCore import QDateTime
 from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel, \
-    QTableWidgetItem, QAbstractItemView, QSplitter, QHBoxLayout, QTableWidget
+    QTableWidgetItem, QAbstractItemView, QSplitter, QHBoxLayout, QTableWidget, \
+    QApplication
 
 from concrete import conector
 from concrete.chart_widget import ChartWidget
@@ -18,9 +22,13 @@ class DataWidget(QWidget, Ui_data):
         self.widget_table = QTableWidget()
         self.splitter.addWidget(self.widget_table)
         self.splitter.addWidget(self.widget_chart)
+        self.splitter.setStretchFactor(0, 0)   # tabla: a su contenido
+        self.splitter.setStretchFactor(1, 1)   # gráfica: ocupa el resto
         self.layout().insertWidget(0, self.splitter)
+        self.resize(1100, 560)
         self.tarjeta = None
         self.sensores = []
+        self._lecturas = []
         self.__signals()
 
     def __signals(self):
@@ -30,73 +38,100 @@ class DataWidget(QWidget, Ui_data):
     def mostrar_datos(self, tarjeta, sensores):
         self.setWindowTitle(f'Datos de {tarjeta.nombre}')
         self.sensores = sensores
-        self.consultar_datos()
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            sensor_id = sensores[0].sensor_id if sensores else None
+            self._lecturas = conector.consultar_lecturas_sensor(sensor_id) if sensor_id else []
+            self._ajustar_rango_fechas()
+            self.consultar_datos()
+        finally:
+            QApplication.restoreOverrideCursor()
         self.show()
 
+    def _ajustar_rango_fechas(self):
+        if not self._lecturas:
+            return
+        fechas = [l.fecha for l in self._lecturas]
+        ini = min(fechas).astimezone()
+        fin = max(fechas).astimezone() + timedelta(minutes=1)
+        self.fecha_inicial.blockSignals(True)
+        self.fecha_final.blockSignals(True)
+        self.fecha_inicial.setDateTime(
+            QDateTime.fromString(ini.strftime("%Y-%m-%d %H:%M:%S"), "yyyy-MM-dd HH:mm:ss"))
+        self.fecha_final.setDateTime(
+            QDateTime.fromString(fin.strftime("%Y-%m-%d %H:%M:%S"), "yyyy-MM-dd HH:mm:ss"))
+        self.fecha_inicial.blockSignals(False)
+        self.fecha_final.blockSignals(False)
+
     def consultar_datos(self):
+        self.widget_table.clear()
         self.widget_table.setRowCount(0)
+        self.widget_table.setColumnCount(2)
+        self.widget_table.setHorizontalHeaderLabels(["No. señal", "Fecha"])
 
-        # columnas
-        headers = ["Fecha"]
-        self.widget_table.setColumnCount(len(headers))
-        self.widget_table.setHorizontalHeaderLabels(headers)
+        if not self.sensores:
+            return
+
+        fecha_inicial = self.fecha_inicial.dateTime().toPython().astimezone()
+        fecha_final = self.fecha_final.dateTime().toPython().astimezone()
+
+        lecturas = sorted(
+            (l for l in self._lecturas if fecha_inicial <= l.fecha <= fecha_final),
+            key=lambda r: r.fecha,
+        )
+        fechas = [l.fecha.astimezone() for l in lecturas]
+
+        # Una fila por lectura: No. señal + Fecha.
+        filas_por_clave = {}
+        for reg in lecturas:
+            fecha_local = reg.fecha.astimezone()
+            clave = fecha_local.strftime("%Y-%m-%d %H:%M:%S")
+            if clave not in filas_por_clave:
+                row = self.widget_table.rowCount()
+                self.widget_table.insertRow(row)
+                num_txt = str(reg.numero_lectura) if reg.numero_lectura is not None else "—"
+                it_num = QTableWidgetItem(num_txt)
+                it_num.setTextAlignment(Qt.AlignCenter)
+                self.widget_table.setItem(row, 0, it_num)                       # No. señal
+                self.widget_table.setItem(
+                    row, 1, QTableWidgetItem(fecha_local.strftime("%Y-%m-%d %H:%M")))  # Fecha
+                filas_por_clave[clave] = row
+
+        # Columnas de valores (Temperatura / Humedad)
         series = {}
-        fechas = []
-
         for sensor in self.sensores:
-            series[sensor.tipo] = []
-            # .astimezone() adjunta tu zona horaria local a la fecha del
-            # selector, para que la comparación contra los datos en UTC sea
-            # correcta (si no, habría un desfase de horas y saldría vacío).
-            fecha_inicial = self.fecha_inicial.dateTime().toPython().astimezone()
-            fecha_final = self.fecha_final.dateTime().toPython().astimezone()
-            # Modelo nuevo: una lectura trae temp y hum juntas.
-            # sensor.campo indica cuál de las dos usa este renglón.
-            lecturas = conector.consultar_lecturas(
-                sensor.sensor_id, fecha_inicial, fecha_final)
-
-            # agregar columna
             col = self.widget_table.columnCount()
             self.widget_table.insertColumn(col)
-            self.widget_table.setHorizontalHeaderItem(col, QTableWidgetItem(
-                sensor.tipo))
+            self.widget_table.setHorizontalHeaderItem(col, QTableWidgetItem(sensor.tipo))
 
-            # construir índice de fechas existentes en la tabla
-            filas_por_fecha = {}
-            for row in range(self.widget_table.rowCount()):
-                item = self.widget_table.item(row, 0)
-                if item:
-                    fecha_str = item.text()
-                    filas_por_fecha[fecha_str] = row
-
-            # escribir lecturas
+            valores = []
             for reg in lecturas:
-                valor = getattr(reg, sensor.campo)   # reg.temp o reg.hum
-                if valor is None:
-                    continue
-                fecha_str = reg.fecha.strftime("%Y-%m-%d %H:%M")
-                if fecha_str in filas_por_fecha:
-                    row = filas_por_fecha[fecha_str]
-                    item = QTableWidgetItem(f"{valor:.2f} {sensor.unidades}")
-                    item.setTextAlignment(Qt.AlignRight)
-                    self.widget_table.setItem(row, col, item)
-                else:
-                    row = self.widget_table.rowCount()
-                    self.widget_table.insertRow(row)
-                    self.widget_table.setItem(
-                        row, 0, QTableWidgetItem(fecha_str))
-                    item = QTableWidgetItem(f"{valor:.2f} {sensor.unidades}")
-                    item.setTextAlignment(Qt.AlignRight)
-                    self.widget_table.setItem(row, col, item)
-                    filas_por_fecha[fecha_str] = row
-                    fechas.append(reg.fecha)
-                series[sensor.tipo].append(valor)
-        if series:
+                valor = getattr(reg, sensor.campo)
+                valores.append(valor if valor is not None else float('nan'))
+                clave = reg.fecha.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+                row = filas_por_clave[clave]
+                texto = f"{valor:.2f} {sensor.unidades}" if valor is not None else "—"
+                item = QTableWidgetItem(texto)
+                item.setTextAlignment(Qt.AlignRight)
+                self.widget_table.setItem(row, col, item)
+            series[sensor.tipo] = valores
+
+        if fechas:
             self.widget_chart.plot_data(fechas, series)
+
         self.widget_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.widget_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.widget_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.widget_table.verticalHeader().setVisible(False)
+        self.widget_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.widget_table.resizeColumnsToContents()
-        header = self.widget_table.horizontalHeader()
-        header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.widget_table.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.ResizeToContents)
+
+        # Ajustar el ancho de la tabla EXACTAMENTE a su contenido:
+        # sin margen vacío a la derecha y sin scroll horizontal.
+        ancho = self.widget_table.frameWidth() * 2
+        for c in range(self.widget_table.columnCount()):
+            ancho += self.widget_table.columnWidth(c)
+        ancho += self.widget_table.verticalScrollBar().sizeHint().width()
+        self.widget_table.setFixedWidth(ancho)
