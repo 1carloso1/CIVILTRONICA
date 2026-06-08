@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QMainWindow, QGridLayout, QVBoxLayout, QSpacerItem, QSizePolicy,
     QWidget, QComboBox,
@@ -7,14 +7,16 @@ from PySide6.QtWidgets import (
 from concrete import conector
 from concrete.board_widget import BoardMiniWidget
 from concrete.board_widget import BoardWidget
+from concrete.data import DataWidget
 from concrete.registro import Registro
 from concrete.sensor_widget import SensorWidget
 from ui.ui_main import Ui_main
 
-
-ANCHO_VENTANA = 820       # ancho fijo de la ventana
-ALTO_VENTANA = 640        # alto fijo (pensado para ver ~4 tarjetas: 2 filas)
-COLUMNAS = 2              # tarjetas por fila -> 2 columnas x 2 filas = 4 a la vista
+# --- Ajustes de presentación ---
+ANCHO_VENTANA = 820
+ALTO_VENTANA = 640
+COLUMNAS = 2
+INTERVALO_REFRESCO_MS = 30000   # 30 segundos
 
 
 class MainWindow(QMainWindow, Ui_main):
@@ -24,6 +26,7 @@ class MainWindow(QMainWindow, Ui_main):
         super().setupUi(self)
         self.widget_boards = QWidget()
         self.widget_mini_boards = QWidget()
+        self.historial = DataWidget()        # ventana de historial ÚNICA y reutilizable
         self._ajustar_menu()
         self._configurar_ventana()
         self._crear_filtro()
@@ -33,17 +36,41 @@ class MainWindow(QMainWindow, Ui_main):
         self._cargar_filtro()
         self.populate_dashboard()
         self.populate_with_mini()
+        self._iniciar_auto_refresco()
 
     def __signals__(self):
         self.btn_grafico.toggled.connect(self.swap_layout)
         self.accion_dispositivo.triggered.connect(self.register_new)
         self.le_filtrar.textChanged.connect(self._aplicar_filtro)
 
+    # ----- Auto-refresco cada 30 s -----
+    def _iniciar_auto_refresco(self):
+        self._timer = QTimer(self)
+        self._timer.setInterval(INTERVALO_REFRESCO_MS)
+        self._timer.timeout.connect(self._auto_refrescar)
+        self._timer.start()
+
+    def _auto_refrescar(self):
+        # Conserva la posición del scroll para que el refresco no "salte".
+        barra = self.scroll_area.verticalScrollBar()
+        pos = barra.value()
+        self.scroll_area_contents.setUpdatesEnabled(False)   # evita parpadeo
+        self._cargar_filtro()           # por si hay nodos nuevos
+        self.populate_dashboard()       # por si hay sensores nuevos o cambios
+        self.populate_with_mini()
+        self.scroll_area_contents.setUpdatesEnabled(True)
+        barra.setValue(pos)
+        # Si el historial está abierto, también se actualiza.
+        if self.historial.isVisible():
+            self.historial.refrescar()
+
+    # ----- Abrir historial (ventana única) -----
+    def _abrir_historial(self, tarjeta, sensores):
+        self.historial.mostrar_datos(tarjeta, sensores)
+
     # ----- Tamaño fijo + scroll vertical -----
     def _configurar_ventana(self):
-        # Tamaño fijo: ya no se puede estirar con el mouse ni crece con el contenido.
         self.setFixedSize(ANCHO_VENTANA, ALTO_VENTANA)
-        # El contenido que no cabe se navega con scroll vertical (sin scroll horizontal).
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -115,8 +142,7 @@ class MainWindow(QMainWindow, Ui_main):
         for i, tarjeta in enumerate(tarjetas):
             row = i // COLUMNAS
             col = i % COLUMNAS
-            layout.addWidget(BoardWidget(tarjeta), row, col)
-        # Empuja las tarjetas hacia arriba para que el scroll se vea natural.
+            layout.addWidget(BoardWidget(tarjeta, self._abrir_historial), row, col)
         layout.setRowStretch(layout.rowCount(), 1)
 
     @staticmethod
@@ -136,7 +162,7 @@ class MainWindow(QMainWindow, Ui_main):
         self.clear_layout(layout)
         tarjetas = self._tarjetas_filtradas()
         for tarjeta in tarjetas:
-            layout.addWidget(BoardMiniWidget(tarjeta))
+            layout.addWidget(BoardMiniWidget(tarjeta, self._abrir_historial))
         layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Expanding, QSizePolicy.Expanding))
 
     def register_new(self):

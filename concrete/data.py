@@ -29,15 +29,22 @@ class DataWidget(QWidget, Ui_data):
         self.tarjeta = None
         self.sensores = []
         self._lecturas = []
+        self._rango_manual = False
         self.__signals()
 
     def __signals(self):
-        self.fecha_inicial.dateTimeChanged.connect(self.consultar_datos)
-        self.fecha_final.dateTimeChanged.connect(self.consultar_datos)
+        self.fecha_inicial.dateTimeChanged.connect(self._on_rango_cambiado)
+        self.fecha_final.dateTimeChanged.connect(self._on_rango_cambiado)
+
+    def _on_rango_cambiado(self):
+        # El usuario movió las fechas: respetar su rango en los auto-refrescos.
+        self._rango_manual = True
+        self.consultar_datos()
 
     def mostrar_datos(self, tarjeta, sensores):
         self.setWindowTitle(f'Datos de {tarjeta.nombre}')
         self.sensores = sensores
+        self._rango_manual = False
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             sensor_id = sensores[0].sensor_id if sensores else None
@@ -47,6 +54,16 @@ class DataWidget(QWidget, Ui_data):
         finally:
             QApplication.restoreOverrideCursor()
         self.show()
+
+    def refrescar(self):
+        """Auto-refresco (cada 30 s) del historial abierto, sin cursor de espera."""
+        if not self.sensores:
+            return
+        sensor_id = self.sensores[0].sensor_id
+        self._lecturas = conector.consultar_lecturas_sensor(sensor_id)
+        if not self._rango_manual:
+            self._ajustar_rango_fechas()   # extiende el rango a los datos nuevos
+        self.consultar_datos()
 
     def _ajustar_rango_fechas(self):
         if not self._lecturas:
@@ -66,6 +83,7 @@ class DataWidget(QWidget, Ui_data):
     def consultar_datos(self):
         self.widget_table.clear()
         self.widget_table.setRowCount(0)
+        # Columnas base: No. señal primero, luego Fecha.
         self.widget_table.setColumnCount(2)
         self.widget_table.setHorizontalHeaderLabels(["No. señal", "Fecha"])
 

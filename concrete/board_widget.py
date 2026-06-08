@@ -2,7 +2,6 @@ from PySide6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel, \
     QSizePolicy, QHBoxLayout
 
 from concrete import conector
-from concrete.data import DataWidget
 from concrete.sensor_mini_widget import SensorMiniWidget
 from concrete.sensor_widget import SensorWidget
 from ui.ui_board import Ui_board
@@ -11,16 +10,18 @@ from ui.ui_board_mini import Ui_board_mini
 
 class BaseBoardWidget(QWidget):
 
-    def __init__(self, tarjeta, parent=None):
+    def __init__(self, tarjeta, abrir_historial=None, parent=None):
         super().__init__(parent)
         self.tarjeta = tarjeta
+        # Callback que abre el historial (lo provee la ventana principal).
+        self.abrir_historial = abrir_historial
         self.sensores = conector.consultar_sensores_por_tarjeta(
             self.tarjeta.tarjeta_id
         )
-        self.data_widget = DataWidget()
 
     def mostrar_datos(self, event):
-        self.data_widget.mostrar_datos(self.tarjeta, self.sensores)
+        if self.abrir_historial is not None:
+            self.abrir_historial(self.tarjeta, self.sensores)
         event.accept()
 
     def set_common_ui(self, lbl_nombre, widget_tags):
@@ -37,7 +38,7 @@ class BaseBoardWidget(QWidget):
 
     # Shared helper
     def populate_common_board(self, widget_sensores):
-        layout = self.make_layout()           # hook
+        layout = self.make_layout()                # hook
         sensor_widget = self.make_sensor_widget()  # hook
         for sensor in self.sensores:
             sensor_widget.add_sensor(sensor)
@@ -54,8 +55,8 @@ class BaseBoardWidget(QWidget):
 
 class BoardWidget(BaseBoardWidget, Ui_board):
 
-    def __init__(self, tarjeta, parent=None):
-        super().__init__(tarjeta, parent)
+    def __init__(self, tarjeta, abrir_historial=None, parent=None):
+        super().__init__(tarjeta, abrir_historial, parent)
         self.setupUi(self)
         self.set_common_ui(self.lbl_nombre, self.widget_tags)
         self.populate_common_board(self.widget_sensores)
@@ -74,8 +75,8 @@ class BoardWidget(BaseBoardWidget, Ui_board):
 
 class BoardMiniWidget(BaseBoardWidget, Ui_board_mini):
 
-    def __init__(self, tarjeta, parent=None):
-        super().__init__(tarjeta, parent)
+    def __init__(self, tarjeta, abrir_historial=None, parent=None):
+        super().__init__(tarjeta, abrir_historial, parent)
         self.setupUi(self)
         self.set_common_ui(self.lbl_nombre, self.widget_tags)
         self.populate_common_board(self.widget_sensores)

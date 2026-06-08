@@ -1,5 +1,33 @@
 # Changelog
 
+## Tiempo real y mejoras de interfaz
+
+Funcionalidad añadida sobre la migración a Supabase/PostgreSQL.
+
+### Tiempo real
+- Auto-refresco automático cada 30 s del panel principal (detecta sensores,
+  nodos o cambios nuevos) y del historial abierto (tabla y gráficas), sin
+  cerrar ni reabrir la aplicación. Conserva el scroll, el filtro y, si el
+  usuario movió el rango de fechas a mano, respeta su selección.
+- Ventana de historial **única y reutilizable** (vive en la ventana principal)
+  en lugar de una por tarjeta: el historial abierto sobrevive a los refrescos
+  del panel y se deja de crear una gráfica por cada tarjeta.
+
+### Interfaz del historial
+- Columna **No. señal** (numero_lectura) en la tabla.
+- Orden de columnas: No. señal → Fecha → Temperatura → Humedad.
+- Tabla ajustada al ancho de su contenido (sin margen vacío ni scroll
+  horizontal); la gráfica ocupa el espacio restante y queda más ancha.
+- Cursor de "cargando" al abrir un sensor.
+
+### Ventana principal
+- Tamaño fijo (no redimensionable con el mouse), 2 columnas y scroll vertical.
+- Corrección del parpadeo de la interfaz al arrancar.
+
+### Pruebas
+- `sembrar_datos.py` reescrito como inyector en tiempo real: envía lecturas
+  con valores aleatorios suaves cada minuto, en bucle, hasta detenerlo (Ctrl+C).
+
 ## Migración a Supabase/PostgreSQL y rediseño del modelo
 
 Migración completa de la persistencia de **MySQL local** a **PostgreSQL en la
